@@ -48,7 +48,6 @@ export function devRemotePlugin(
   }
 
   let viteDevServer: ViteDevServer
-  let browserHash: string | undefined
   return {
     name: 'originjs:remote-development',
     virtualFile: {
@@ -96,7 +95,7 @@ async function __federation_method_ensure(remoteId) {
       });
     } else if (importTypes.includes(remote.format)) {
       // loading js with import(...)
-      return new Promise(resolve => {
+      return new Promise((resolve, reject) => {
         const getUrl = typeof remote.url === 'function' ? remote.url : () => Promise.resolve(remote.url);
         getUrl().then(url => {
           import(/* @vite-ignore */ url).then(lib => {
@@ -108,7 +107,7 @@ async function __federation_method_ensure(remoteId) {
               remote.inited = true;
             }
             resolve(remote.lib);
-          })
+          }).catch(reject)
         })
       })
     }
@@ -159,148 +158,81 @@ export {__federation_method_ensure, __federation_method_getRemote , __federation
     },
     async transform(this: TransformPluginContext, code: string, id: string) {
       if (builderInfo.isHost && !builderInfo.isRemote) {
-        if (viteDevServer && (!browserHash || browserHash.length === 0)) {
-          browserHash = viteDevServer._optimizeDepsMetadata?.browserHash
-          const optimized = viteDevServer._optimizeDepsMetadata?.optimized
-          if (optimized !== undefined) {
-            for (const arr of parsedOptions.devShared) {
-              if (!arr[1].version && !arr[1].manuallyPackagePathSetting) {
-                const regExp = new RegExp(`node_modules[/\\\\]${arr[0]}[/\\\\]`)
-                const packageJsonPath = `${
-                  optimized[arr[0]].src?.split(regExp)[0]
-                }node_modules/${arr[0]}/package.json`
-                try {
-                  const json = JSON.parse(
-                    readFileSync(packageJsonPath, { encoding: 'utf-8' })
-                  )
-                  arr[1].version = json.version
-                  arr[1].version.length
-                } catch (e) {
-                  this.error(
-                    `No description file or no version in description file (usually package.json) of ${arr[0]}(${packageJsonPath}). Add version to description file, or manually specify version in shared config.`
-                  )
-                }
-              }
+        for (const arr of parsedOptions.devShared) {
+          if (!arr[1].version && !arr[1].manuallyPackagePathSetting) {
+            const packageJsonPath = (
+              await this.resolve(`${arr[0]}/package.json`)
+            )?.id
+            if (!packageJsonPath) {
+              this.error(
+                `No description file or no version in description file (usually package.json) of ${arr[0]}(${packageJsonPath}). Add version to description file, or manually specify version in shared config.`
+              )
+            } else {
+              const json = JSON.parse(
+                readFileSync(packageJsonPath, { encoding: 'utf-8' })
+              )
+              arr[1].version = json.version
             }
           }
         }
+      }
 
-        if (id === '\0virtual:__federation__') {
-          const scopeCode = await devSharedScopeCode.call(
-            this,
-            parsedOptions.devShared,
-            browserHash
-          )
-          return code.replace(
-            getModuleMarker('shareScope'),
-            scopeCode.join(',')
-          )
-        }
+      if (id === '\0virtual:__federation__') {
+        const scopeCode = await devSharedScopeCode.call(
+          this,
+          parsedOptions.devShared
+        )
+        return code.replace(getModuleMarker('shareScope'), scopeCode.join(','))
+      }
 
-        let ast: AcornNode | null = null
-        try {
-          ast = this.parse(code)
-        } catch (err) {
-          console.error(err)
-        }
-        if (!ast) {
-          return null
-        }
+      let ast: AcornNode | null = null
+      try {
+        ast = this.parse(code)
+      } catch (err) {
+        console.error(err)
+      }
+      if (!ast) {
+        return null
+      }
 
-        const magicString = new MagicString(code)
-        const hasStaticImported = new Map<string, string>()
+      const magicString = new MagicString(code)
+      const hasStaticImported = new Map<string, string>()
 
-        let requiresRuntime = false
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        walk(ast, {
-          enter(node: any) {
-            if (
-              (node.type === 'ImportExpression' ||
-                node.type === 'ImportDeclaration' ||
-                node.type === 'ExportNamedDeclaration') &&
-              node.source?.value?.indexOf('/') > -1
-            ) {
-              const moduleId = node.source.value
-              const remote = remotes.find((r) => r.regexp.test(moduleId))
-              const needWrap = remote?.config.from === 'vite'
-              if (remote) {
-                requiresRuntime = true
-                const modName = `.${moduleId.slice(remote.id.length)}`
-                switch (node.type) {
-                  case 'ImportExpression': {
-                    magicString.overwrite(
-                      node.start,
-                      node.end,
-                      `__federation_method_getRemote(${JSON.stringify(
-                        remote.id
-                      )} , ${JSON.stringify(
-                        modName
-                      )}).then(module=>__federation_method_wrapDefault(module, ${needWrap}))`
-                    )
-                    break
-                  }
-                  case 'ImportDeclaration': {
-                    if (node.specifiers?.length) {
-                      const afterImportName = `__federation_var_${moduleId.replace(
-                        /[@/\\.-]/g,
-                        ''
-                      )}`
-                      if (!hasStaticImported.has(moduleId)) {
-                        magicString.overwrite(
-                          node.start,
-                          node.end,
-                          `const ${afterImportName} = await __federation_method_getRemote(${JSON.stringify(
-                            remote.id
-                          )} , ${JSON.stringify(modName)});`
-                        )
-                        hasStaticImported.set(moduleId, afterImportName)
-                      }
-                      let deconstructStr = ''
-                      node.specifiers.forEach((spec) => {
-                        // default import , like import a from 'lib'
-                        if (spec.type === 'ImportDefaultSpecifier') {
-                          magicString.appendRight(
-                            node.end,
-                            `\n let ${spec.local.name} = __federation_method_unwrapDefault(${afterImportName}) `
-                          )
-                        } else if (spec.type === 'ImportSpecifier') {
-                          //  like import {a as b} from 'lib'
-                          const importedName = spec.imported.name
-                          const localName = spec.local.name
-                          deconstructStr += `${
-                            importedName === localName
-                              ? localName
-                              : `${importedName} : ${localName}`
-                          },`
-                        } else if (spec.type === 'ImportNamespaceSpecifier') {
-                          //  like import * as a from 'lib'
-                          magicString.appendRight(
-                            node.end,
-                            `let {${spec.local.name}} = ${afterImportName}`
-                          )
-                        }
-                      })
-                      if (deconstructStr.length > 0) {
-                        magicString.appendRight(
-                          node.end,
-                          `\n let {${deconstructStr.slice(
-                            0,
-                            -1
-                          )}} = ${afterImportName}`
-                        )
-                      }
-                    }
-                    break
-                  }
-                  case 'ExportNamedDeclaration': {
-                    // handle export like export {a} from 'remotes/lib'
+      let requiresRuntime = false
+      walk(ast, {
+        enter(node: any) {
+          if (
+            (node.type === 'ImportExpression' ||
+              node.type === 'ImportDeclaration' ||
+              node.type === 'ExportNamedDeclaration') &&
+            node.source?.value?.indexOf('/') > -1
+          ) {
+            const moduleId = node.source.value
+            const remote = remotes.find((r) => r.regexp.test(moduleId))
+            const needWrap = remote?.config.from === 'vite'
+            if (remote) {
+              requiresRuntime = true
+              const modName = `.${moduleId.slice(remote.id.length)}`
+              switch (node.type) {
+                case 'ImportExpression': {
+                  magicString.overwrite(
+                    node.start,
+                    node.end,
+                    `__federation_method_getRemote(${JSON.stringify(
+                      remote.id
+                    )} , ${JSON.stringify(
+                      modName
+                    )}).then(module=>__federation_method_wrapDefault(module, ${needWrap}))`
+                  )
+                  break
+                }
+                case 'ImportDeclaration': {
+                  if (node.specifiers?.length) {
                     const afterImportName = `__federation_var_${moduleId.replace(
                       /[@/\\.-]/g,
                       ''
                     )}`
                     if (!hasStaticImported.has(moduleId)) {
-                      hasStaticImported.set(moduleId, afterImportName)
                       magicString.overwrite(
                         node.start,
                         node.end,
@@ -308,57 +240,109 @@ export {__federation_method_ensure, __federation_method_getRemote , __federation
                           remote.id
                         )} , ${JSON.stringify(modName)});`
                       )
+                      hasStaticImported.set(moduleId, afterImportName)
                     }
-                    if (node.specifiers.length > 0) {
-                      const specifiers = node.specifiers
-                      let exportContent = ''
-                      let deconstructContent = ''
-                      specifiers.forEach((spec) => {
+                    let deconstructStr = ''
+                    node.specifiers.forEach((spec) => {
+                      // default import , like import a from 'lib'
+                      if (spec.type === 'ImportDefaultSpecifier') {
+                        magicString.appendRight(
+                          node.end,
+                          `\n let ${spec.local.name} = __federation_method_unwrapDefault(${afterImportName}) `
+                        )
+                      } else if (spec.type === 'ImportSpecifier') {
+                        //  like import {a as b} from 'lib'
+                        const importedName = spec.imported.name
                         const localName = spec.local.name
-                        const exportName = spec.exported.name
-                        const variableName = `${afterImportName}_${localName}`
-                        deconstructContent = deconstructContent.concat(
-                          `${localName}:${variableName},`
+                        deconstructStr += `${
+                          importedName === localName
+                            ? localName
+                            : `${importedName} : ${localName}`
+                        },`
+                      } else if (spec.type === 'ImportNamespaceSpecifier') {
+                        //  like import * as a from 'lib'
+                        magicString.appendRight(
+                          node.end,
+                          `let {${spec.local.name}} = ${afterImportName}`
                         )
-                        exportContent = exportContent.concat(
-                          `${variableName} as ${exportName},`
-                        )
-                      })
-                      magicString.append(
-                        `\n const {${deconstructContent.slice(
+                      }
+                    })
+                    if (deconstructStr.length > 0) {
+                      magicString.appendRight(
+                        node.end,
+                        `\n let {${deconstructStr.slice(
                           0,
-                          deconstructContent.length - 1
-                        )}} = ${afterImportName}; \n`
-                      )
-                      magicString.append(
-                        `\n export {${exportContent.slice(
-                          0,
-                          exportContent.length - 1
-                        )}}; `
+                          -1
+                        )}} = ${afterImportName}`
                       )
                     }
-                    break
                   }
+                  break
+                }
+                case 'ExportNamedDeclaration': {
+                  // handle export like export {a} from 'remotes/lib'
+                  const afterImportName = `__federation_var_${moduleId.replace(
+                    /[@/\\.-]/g,
+                    ''
+                  )}`
+                  if (!hasStaticImported.has(moduleId)) {
+                    hasStaticImported.set(moduleId, afterImportName)
+                    magicString.overwrite(
+                      node.start,
+                      node.end,
+                      `const ${afterImportName} = await __federation_method_getRemote(${JSON.stringify(
+                        remote.id
+                      )} , ${JSON.stringify(modName)});`
+                    )
+                  }
+                  if (node.specifiers.length > 0) {
+                    const specifiers = node.specifiers
+                    let exportContent = ''
+                    let deconstructContent = ''
+                    specifiers.forEach((spec) => {
+                      const localName = spec.local.name
+                      const exportName = spec.exported.name
+                      const variableName = `${afterImportName}_${localName}`
+                      deconstructContent = deconstructContent.concat(
+                        `${localName}:${variableName},`
+                      )
+                      exportContent = exportContent.concat(
+                        `${variableName} as ${exportName},`
+                      )
+                    })
+                    magicString.append(
+                      `\n const {${deconstructContent.slice(
+                        0,
+                        deconstructContent.length - 1
+                      )}} = ${afterImportName}; \n`
+                    )
+                    magicString.append(
+                      `\n export {${exportContent.slice(
+                        0,
+                        exportContent.length - 1
+                      )}}; `
+                    )
+                  }
+                  break
                 }
               }
             }
           }
-        })
-
-        if (requiresRuntime) {
-          magicString.prepend(
-            `import {__federation_method_ensure, __federation_method_getRemote , __federation_method_wrapDefault , __federation_method_unwrapDefault} from '__federation__';\n\n`
-          )
         }
-        return magicString.toString()
+      })
+
+      if (requiresRuntime) {
+        magicString.prepend(
+          `import {__federation_method_ensure, __federation_method_getRemote , __federation_method_wrapDefault , __federation_method_unwrapDefault} from '__federation__';\n\n`
+        )
       }
+      return magicString.toString()
     }
   }
 
   async function devSharedScopeCode(
     this: TransformPluginContext,
-    shared: (string | ConfigTypeSet)[],
-    viteVersion: string | undefined
+    shared: (string | ConfigTypeSet)[]
   ): Promise<string[]> {
     const hostname = resolveHostname(viteDevServer.config.server)
     const protocol = viteDevServer.config.server.https ? 'https' : 'http'
@@ -395,7 +379,7 @@ export {__federation_method_ensure, __federation_method_getRemote , __federation
         if (typeof obj === 'object') {
           const url = relativePath
             ? `'${protocol}://${hostname.name}:${port}${relativePath}'`
-            : `'${protocol}://${hostname.name}:${port}/${cacheDir}/${sharedName}.js?v=${viteVersion}'`
+            : `'${protocol}://${hostname.name}:${port}/${cacheDir}/${sharedName}.js?'`
 
           str += `get:()=> get(${url}, ${REMOTE_FROM_PARAMETER})`
           res.push(`'${sharedName}':{'${obj.version}':{${str}}}`)
