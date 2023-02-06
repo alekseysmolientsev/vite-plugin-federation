@@ -99,6 +99,8 @@ export default function federation(
         _options.external = [_options.external as string]
       }
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         pluginHook.options?.call(this, _options)
       }
       return _options
@@ -108,6 +110,8 @@ export default function federation(
       registerPlugins(options.mode, env.command)
       registerCount++
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         pluginHook.config?.call(this, config, env)
       }
 
@@ -117,16 +121,22 @@ export default function federation(
     },
     configureServer(server: ViteDevServer) {
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         pluginHook.configureServer?.call(this, server)
       }
     },
     configResolved(config: ResolvedConfig) {
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         pluginHook.configResolved?.call(this, config)
       }
     },
     buildStart(inputOptions) {
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         pluginHook.buildStart?.call(this, inputOptions)
       }
     },
@@ -149,6 +159,8 @@ export default function federation(
 
     transform(code: string, id: string) {
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         const result = pluginHook.transform?.call(this, code, id)
         if (result) {
           return result
@@ -158,12 +170,16 @@ export default function federation(
     },
     moduleParsed(moduleInfo: ModuleInfo): void {
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         pluginHook.moduleParsed?.call(this, moduleInfo)
       }
     },
 
     outputOptions(outputOptions) {
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         pluginHook.outputOptions?.call(this, outputOptions)
       }
       return outputOptions
@@ -171,6 +187,8 @@ export default function federation(
 
     renderChunk(code, chunkInfo, _options) {
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         const result = pluginHook.renderChunk?.call(
           this,
           code,
@@ -186,6 +204,8 @@ export default function federation(
 
     generateBundle: function (_options, bundle, isWrite) {
       for (const pluginHook of pluginList) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         pluginHook.generateBundle?.call(this, _options, bundle, isWrite)
       }
     }

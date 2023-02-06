@@ -1,0 +1,20 @@
+{
+  "name": "unplugin-vite-webpack",
+  "private": true,
+  "version": "1.0.0",
+  "author": "aleksey.smolientsev@valor-software.com",
+  "scripts": {
+    "start": "lerna run start",
+    "stop": "kill-port --port 3003,5003"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@originjs/vite-plugin-federation": "file:../../lib/dist",
+    "kill-port": "^2.0.1",
+    "lerna": "^6.0.1"
+  },
+  "workspaces": [
+    "vite-host",
+    "webpack-remote"
+  ]
+}

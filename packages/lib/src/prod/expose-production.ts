@@ -236,6 +236,8 @@ export function prodExposePlugin(
         }
         const magicString = new MagicString(remoteEntryChunk.code)
         // let cssFunctionName: string = DYNAMIC_LOADING_CSS
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         walk(ast, {
           enter(node: any) {
             if (

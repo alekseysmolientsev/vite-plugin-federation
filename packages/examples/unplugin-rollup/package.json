@@ -1,0 +1,17 @@
+{
+  "name": "unplugin-rollup",
+  "private": true,
+  "version": "1.0.0",
+  "author": "aleksey.smolientsev@valor-software.com",
+  "scripts": {
+    "build": "pnpm --parallel --filter \"./**\" build",
+    "serve": "pnpm --parallel --filter \"./**\" serve",
+    "stop": "kill-port --port 5000,5001"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@originjs/vite-plugin-federation": "file:../../lib/dist",
+    "http-server": "^13.0.1",
+    "kill-port": "^2.0.1"
+  }
+}

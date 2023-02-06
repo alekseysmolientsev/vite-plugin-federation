@@ -66,6 +66,8 @@ export function prodSharedPlugin(
     switch (options.format) {
       case 'es':
         {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           walk(ast, {
             enter(node: any) {
               if (
@@ -139,6 +141,8 @@ export function prodSharedPlugin(
         break
       case 'system':
         {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           walk(ast, {
             enter(node: any) {
               const expression =
