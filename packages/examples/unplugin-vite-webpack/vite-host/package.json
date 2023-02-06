@@ -1,0 +1,24 @@
+{
+  "name": "@unplugin-vite-webpack/vite-host",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "author": "aleksey.smolientsev@valor-software.com",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "yarn build && yarn preview --port 5003"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.17",
+    "@types/react-dom": "^18.0.6",
+    "@vitejs/plugin-react": "^3.0.0",
+    "vite": "^4.0.3",
+    "typescript": "^4.9.4"
+  }
+}

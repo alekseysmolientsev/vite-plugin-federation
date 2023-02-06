@@ -122,7 +122,7 @@ async function __federation_method_ensure(remoteId) {
 }
 
 function __federation_method_unwrapDefault(module) {
-  return (module?.__esModule || module?.[Symbol.toStringTag] === 'Module')?module.default:module
+  return (module?.__esModule || module?.[Symbol.toStringTag] === 'Module') ? module.default : module
 }
 
 function __federation_method_wrapDefault(module ,need){
@@ -241,6 +241,8 @@ export {__federation_method_ensure, __federation_method_getRemote , __federation
         const magicString = new MagicString(code)
         const hasStaticImported = new Map<string, string>()
         let requiresRuntime = false
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         walk(ast, {
           enter(node: any) {
             if (

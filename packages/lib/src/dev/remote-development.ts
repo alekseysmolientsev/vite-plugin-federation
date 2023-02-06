@@ -211,6 +211,8 @@ export {__federation_method_ensure, __federation_method_getRemote , __federation
         const hasStaticImported = new Map<string, string>()
 
         let requiresRuntime = false
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         walk(ast, {
           enter(node: any) {
             if (

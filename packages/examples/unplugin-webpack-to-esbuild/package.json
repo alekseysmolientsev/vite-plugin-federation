@@ -1,0 +1,19 @@
+{
+  "name": "unplugin-webpack-to-esbuild",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "start": "lerna run start",
+    "stop": "kill-port --port 3004,5004"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@originjs/vite-plugin-federation": "file:../../lib/dist",
+    "kill-port": "^2.0.1",
+    "lerna": "^6.0.1"
+  },
+  "workspaces": [
+    "esbuild-host",
+    "webpack-remote"
+  ]
+}

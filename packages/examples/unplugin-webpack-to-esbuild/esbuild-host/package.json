@@ -1,0 +1,24 @@
+{
+  "name": "@unplugin-webpack-to-esbuild/esbuild-host",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "author": "aleksey.smolientsev@valor-software.com",
+  "scripts": {
+    "build": "node esbuild.js",
+    "serve": "npx http-server ./dist -p 5007",
+    "start": "yarn build && yarn serve"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.12",
+    "@types/react": "^18.0.17",
+    "@types/react-dom": "^18.0.6",
+    "@vitejs/plugin-react": "^3.0.0",
+    "esbuild": "^0.17.4",
+    "typescript": "^4.9.4"
+  }
+}

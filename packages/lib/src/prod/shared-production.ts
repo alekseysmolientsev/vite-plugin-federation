@@ -66,6 +66,8 @@ export function prodSharedPlugin(
     switch (options.format) {
       case 'es':
         {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           walk(ast, {
             enter(node: any) {
               if (
@@ -139,6 +141,8 @@ export function prodSharedPlugin(
         break
       case 'system':
         {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           walk(ast, {
             enter(node: any) {
               const expression =
@@ -420,7 +424,7 @@ export function prodSharedPlugin(
         }
 
         if (isHost && !arr[1].manuallyPackagePathSetting && !arr[1].version) {
-          const packageJsonPath = `${currentDir}${sep}node_modules${sep}${arr[0]}${sep}package.json`
+          const packageJsonPath =  `${arr[1].id.split(sep).slice(0, -1).join(sep)}${sep}package.json`;
           const json = JSON.parse(
             readFileSync(packageJsonPath, { encoding: 'utf-8' })
           )
